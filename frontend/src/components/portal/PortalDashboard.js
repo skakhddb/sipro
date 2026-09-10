@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { LayoutDashboard, Wallet, HardHat, FileText, MessageSquareWarning, LogOut, Building2, Map, ShieldCheck, Ban } from "lucide-react";
+import { LayoutDashboard, Wallet, HardHat, FileText, MessageSquareWarning, LogOut, Building2, Map, ShieldCheck, Ban, CreditCard } from "lucide-react";
 import { usePortalAuth } from "@/context/PortalAuthContext";
 import { PORTAL, P50, P56 } from "@/constants/testIds";
 import OverviewPanel from "@/components/portal/panels/OverviewPanel";
 import PaymentsPanel from "@/components/portal/panels/PaymentsPanel";
+import KprPanel from "@/components/portal/panels/KprPanel";
 import ProgressPanel from "@/components/portal/panels/ProgressPanel";
 import PlanPanel from "@/components/portal/panels/PlanPanel";
 import DocumentsPanel from "@/components/portal/panels/DocumentsPanel";
@@ -15,6 +16,8 @@ import CancellationPanel from "@/components/portal/panels/CancellationPanel";
 const TABS = [
   { id: "overview", label: "Ringkasan", icon: LayoutDashboard, tid: PORTAL.tabOverview, Comp: OverviewPanel },
   { id: "payments", label: "Pembayaran", icon: Wallet, tid: PORTAL.tabPayments, Comp: PaymentsPanel },
+  // Jadwal angsuran KPR (fixed → floating) — tampil setelah SP3K bank tercatat.
+  { id: "kpr", label: "KPR", icon: CreditCard, tid: PORTAL.tabKpr, Comp: KprPanel },
   { id: "progress", label: "Progres", icon: HardHat, tid: PORTAL.tabProgress, Comp: ProgressPanel },
   { id: "plan", label: "Peta Kavling", icon: Map, tid: PORTAL.tabPlan, Comp: PlanPanel },
   { id: "documents", label: "Dokumen", icon: FileText, tid: PORTAL.tabDocuments, Comp: DocumentsPanel },

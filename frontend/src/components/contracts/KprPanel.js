@@ -18,6 +18,7 @@ import ReferenceSelect from "@/components/patterns/ReferenceSelect";
 import DatePickerField from "@/components/patterns/DatePickerField";
 import KprTermsPicker, { monthlyInstallment } from "@/components/patterns/KprTermsPicker";
 import KprDisbursementBox from "@/components/contracts/KprDisbursementBox";
+import { KprAmendTermsDialog, KprAmendmentHistory, KprScheduleBox, KPR_AMEND_TESTIDS } from "@/components/contracts/KprAmendTerms";
 import CashAccountSelect from "@/components/cashBank/CashAccountSelect";
 import { useAuth } from "@/context/AuthContext";
 import { formatDateWIB, formatIDR } from "@/utils/formatters";
@@ -48,6 +49,7 @@ export default function KprPanel({ contract, onChanged }) {
   const app = kpr.application || {};
   const [stage, setStage] = useState(null);
   const [reject, setReject] = useState(false);
+  const [amend, setAmend] = useState(false);
   const [form, setForm] = useState({});
   const [busy, setBusy] = useState(false);
 
@@ -124,12 +126,19 @@ export default function KprPanel({ contract, onChanged }) {
             </p>
           ) : null}
         </div>
-        {mayUpdate && app.kpr_stage !== "ditolak" ? (
-          <Button data-testid={P53.kprRejectBtn} size="sm" variant="outline"
-            onClick={() => { setForm({}); setReject(true); }}>
-            <XCircle className="mr-1.5 h-3.5 w-3.5" /> Bank menolak
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {mayUpdate && app.sp3k?.file_id && app.kpr_stage !== "ditolak" ? (
+            <Button data-testid={KPR_AMEND_TESTIDS.amendBtn} size="sm" variant="outline" onClick={() => setAmend(true)}>
+              Ubah tenor/bunga
+            </Button>
+          ) : null}
+          {mayUpdate && app.kpr_stage !== "ditolak" ? (
+            <Button data-testid={P53.kprRejectBtn} size="sm" variant="outline"
+              onClick={() => { setForm({}); setReject(true); }}>
+              <XCircle className="mr-1.5 h-3.5 w-3.5" /> Bank menolak
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {app.kpr_stage === "ditolak" ? (
@@ -156,6 +165,8 @@ export default function KprPanel({ contract, onChanged }) {
 
       <KprDisbursementBox contract={contract} app={app} mayUpdate={mayUpdate}
         onChanged={onChanged} onRecord={() => openStage("pencairan")} />
+      <KprAmendmentHistory items={app.terms_amendments} />
+      <KprScheduleBox contract={contract} nonce={`${app.tenor_months}-${app.interest_rate_pct}-${app.approved_plafon}-${(app.terms_amendments || []).length}`} />
 
       <ol className="space-y-2">
         {(kpr.stages || []).map((s) => (
@@ -332,6 +343,9 @@ export default function KprPanel({ contract, onChanged }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* dialog amandemen tenor/bunga sesudah SP3K */}
+      <KprAmendTermsDialog contract={contract} app={app} open={amend} onOpenChange={setAmend} onChanged={onChanged} />
 
       {/* dialog penolakan bank */}
       <Dialog open={reject} onOpenChange={setReject}>

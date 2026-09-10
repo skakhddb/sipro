@@ -131,6 +131,7 @@ export default function KprProductsPanel() {
   const [showInactive, setShowInactive] = useState(false);
   const [dialog, setDialog] = useState({ open: false, product: null });
   const [report, setReport] = useState(null);
+  const [preview, setPreview] = useState(null);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef(null);
 
@@ -151,15 +152,31 @@ export default function KprProductsPanel() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const r = await api.post("/master/kpr-products/import", fd);
+      const r = await api.post("/master/kpr-products/import?dry_run=true", fd);
       const d = r.data.data;
-      setReport(d);
-      if (d.rows) toast.success(`${d.created.length} produk baru, ${d.updated.length} diperbarui${d.errors.length ? `, ${d.errors.length} baris bermasalah` : ""}.`);
-      else toast.error(d.errors[0] || "Tidak ada baris valid di berkas.");
-      load();
+      setReport(null);
+      setPreview({ ...d, file });
+      if (!d.rows) toast.error(d.errors[0] || "Tidak ada baris valid di berkas.");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Impor gagal.");
     } finally { setImporting(false); if (fileRef.current) fileRef.current.value = ""; }
+  };
+
+  const commit = async () => {
+    if (!preview?.file) return;
+    setImporting(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", preview.file);
+      const r = await api.post("/master/kpr-products/import", fd);
+      const d = r.data.data;
+      setPreview(null);
+      setReport(d);
+      toast.success(`${d.created.length} produk baru, ${d.updated.length} diperbarui${d.errors.length ? `, ${d.errors.length} baris bermasalah` : ""}.`);
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Impor gagal disimpan.");
+    } finally { setImporting(false); }
   };
 
   const downloadTemplate = async () => {
@@ -202,6 +219,41 @@ export default function KprProductsPanel() {
           </Button>
         </div>
       </div>
+
+      {preview ? (
+        <div data-testid={MASTER.kprImportPreview} className="space-y-2 rounded-lg border border-primary/40 bg-primary/5 p-3 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p><b>Pratinjau impor</b> {preview.file?.name}: {preview.to_create} akan dibuat · {preview.to_update} akan diperbarui · {preview.errors.length} baris bermasalah. Belum ada yang tersimpan.</p>
+            <div className="flex gap-2">
+              <Button data-testid={MASTER.kprImportCancel} size="sm" variant="outline" onClick={() => setPreview(null)} disabled={importing}>Batal</Button>
+              <Button data-testid={MASTER.kprImportConfirm} size="sm" onClick={commit} disabled={importing || !preview.rows}>
+                {importing ? "Menyimpan…" : `Simpan ${preview.rows} baris`}
+              </Button>
+            </div>
+          </div>
+          {preview.rows ? (
+            <table className="w-full text-xs">
+              <thead className="text-left text-muted-foreground"><tr><th className="py-1 pr-2">Baris</th><th className="pr-2">Aksi</th><th className="pr-2">Bank</th><th className="pr-2">Produk</th><th className="pr-2">Tenor</th><th className="pr-2">Bunga</th><th>Status</th></tr></thead>
+              <tbody>
+                {preview.preview.map((p) => (
+                  <tr key={p.row} data-testid={MASTER.kprImportPreviewRow} data-action={p.action} className="border-t">
+                    <td className="py-1 pr-2">{p.row}</td>
+                    <td className="pr-2">
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${p.action === "create" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                        {p.action === "create" ? "baru" : `perbarui${p.changes.length ? ` (${p.changes.join(", ")})` : ""}`}
+                      </span>
+                    </td>
+                    <td className="pr-2 font-medium">{p.bank_name}</td><td className="pr-2">{p.name}</td>
+                    <td className="pr-2">{p.tenors.join(", ")}</td><td className="pr-2">{p.interest_rate_pct}%</td>
+                    <td>{p.is_active ? "aktif" : "arsip"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+          {preview.errors.length ? <ul className="list-disc pl-4 text-rose-700">{preview.errors.map((e, i) => <li key={i}>{e}</li>)}</ul> : null}
+        </div>
+      ) : null}
 
       {report ? (
         <div data-testid={MASTER.kprImportReport} className="space-y-1 rounded-lg border bg-muted/30 p-3 text-xs">

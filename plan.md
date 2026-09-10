@@ -520,3 +520,12 @@ Sesi sebelumnya terputus di tengah penutupan temuan uji iterasi 102. Yang dilaku
 | `KprPanel` header `kpr-header-terms` (produk · bunga · est. angsuran); docgen `kpr_terms_text()`, token `{{kpr_terms}}`/`{{kpr_terms_line}}` (terdaftar di `doc_script.DOCGEN_TOKENS`), `dp_line` SPR KPR memuat "Fasilitas KPR : …", `_SPKT` memuat `{{kpr_terms_line}}` | **SELESAI** |
 | Impor Excel produk KPR: `GET /master/kpr-products/import-template.xlsx`, `POST /master/kpr-products/import` (upsert bank+nama, laporan kesalahan per baris, `settings:manage`); UI tombol Template Excel / Impor Excel + kotak laporan (`MASTER.kprImport*`) | **SELESAI** |
 | Uji: testing agent iteration_26 — 10 pytest (`tests/test_kpr_iter26.py`) + UI SP3K e2e, impor, angsuran 100% lulus | **SELESAI** |
+
+## 3ab) Sesi 2026-09-10 #3 — Pratinjau impor, jadwal angsuran portal, amandemen sesudah SP3K (SELESAI)
+
+| Bagian | Status |
+|---|---|
+| `POST /master/kpr-products/import?dry_run=true` → pratinjau (aksi buat/perbarui + `changes` + kesalahan) tanpa menulis; UI kotak pratinjau + tombol Simpan N baris / Batal (`MASTER.kprImportPreview*`) | **SELESAI** |
+| `kpr_schedule.py` (`annuity`, `yearly_schedule` fixed → floating, satu rumus); `kpr_engine.schedule_of`; `GET /contracts/{id}/kpr/schedule` (staf); `GET /portal/kpr` (pembeli, tanpa riwayat amandemen); portal tab **KPR** (`PORTAL.tabKpr`, `kprCard`, `kprScheduleRow`, `kprPending`, `kprEmpty`); `KprScheduleTable` dipakai portal & staf (`KprScheduleBox`) | **SELESAI** |
+| `kpr_engine.amend_terms` (hanya sesudah SP3K, tidak untuk ditolak, alasan ≥5, tolak "tidak ada yang berubah", riwayat `terms_amendments` before/after, sp3k.tenor/rate/product disinkronkan); `POST /contracts/{id}/kpr/amend-terms`; UI `KprAmendTermsDialog` (tombol `kpr-amend-btn`, picker `kpr-amend-terms-*`, `kpr-amend-reason`, `kpr-amend-submit`), `KprAmendmentHistory` (`kpr-amendment-row`) | **SELESAI** |
+| Uji: testing agent iteration_27 — 7 pytest (`tests/test_kpr_iter27.py`) + UI pratinjau impor, amandemen staf, portal KPR 100% lulus | **SELESAI** |

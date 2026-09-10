@@ -25,7 +25,7 @@ import kpr_engine as kpr
 from core_utils import parse_pagination, serialize_doc
 from db import ORG_ID, db
 from models_p53 import (ContractCostsIn, ContractSchemeIn, ConvertToCustomerIn,
-                       DocGenerateIn, KprRejectIn, KprStageIn, LegalAdvanceIn)
+                       DocGenerateIn, KprAmendTermsIn, KprRejectIn, KprStageIn, LegalAdvanceIn)
 from rbac import audit_log, is_scoped_sales, require_permission
 
 router = APIRouter(tags=["contracts"])
@@ -236,6 +236,28 @@ async def kpr_reject(contract_id: str, payload: KprRejectIn,
     await audit_log(user, "update", "financing", app.get("id"),
                     {"kpr_stage": "ditolak", "reason": payload.reason})
     return {"data": serialize_doc(app)}
+
+
+@router.post("/contracts/{contract_id}/kpr/amend-terms")
+async def kpr_amend_terms(contract_id: str, payload: KprAmendTermsIn,
+                          user: dict = Depends(require_permission("financing", "update"))):
+    """Bank mengubah tenor/bunga/produk sesudah SP3K — nilai lama tersimpan di riwayat amandemen."""
+    await _contract_scoped(contract_id, user)
+    try:
+        app = await kpr.amend_terms(_org(user), contract_id, payload.model_dump(), user.get("email"))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    await audit_log(user, "update", "financing", app.get("id"),
+                    {"kpr_amend_terms": payload.model_dump(exclude_none=True)})
+    return {"data": serialize_doc(app)}
+
+
+@router.get("/contracts/{contract_id}/kpr/schedule")
+async def kpr_schedule_view(contract_id: str,
+                            user: dict = Depends(require_permission("financing", "view"))):
+    """Simulasi jadwal angsuran per tahun (fixed → floating) dari pengajuan KPR kontrak ini."""
+    c = await _contract_scoped(contract_id, user)
+    return {"data": serialize_doc(await kpr.schedule_of(_org(user), c))}
 
 
 # ============================================================ dokumen owner (SPR/SPKT)

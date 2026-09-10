@@ -197,6 +197,25 @@ async def overview(pu: dict = Depends(get_portal_user)):
     return {"data": serialize_doc(out), "customer_name": cust.get("name")}
 
 
+@router.get("/kpr")
+async def portal_kpr(pu: dict = Depends(get_portal_user)):
+    """KPR pembeli: bank, produk, plafon, tenor, bunga + jadwal angsuran per tahun (fixed → floating)
+    — muncul setelah SP3K bank tercatat. Angka simulasi, bukan tagihan bank."""
+    import kpr_engine as kpr
+    org = pu.get("org_id", ORG_ID)
+    cust = await _customer(pu)
+    out = []
+    for d in await _deals(pu, cust):
+        contract = await db.contracts.find_one({"org_id": org, "deal_id": d["id"]}, {"_id": 0})
+        if not contract or contract.get("scheme") != "kpr":
+            continue
+        unit = await db.units.find_one({"id": d.get("unit_id")}, {"_id": 0, "code": 1}) or {}
+        sched = await kpr.schedule_of(org, contract)
+        sched.pop("amendments", None)
+        out.append({"deal_id": d["id"], "unit_code": unit.get("code"), **sched})
+    return {"data": serialize_doc(out)}
+
+
 @router.get("/payments")
 async def payments(pu: dict = Depends(get_portal_user)):
     org = pu.get("org_id", ORG_ID)

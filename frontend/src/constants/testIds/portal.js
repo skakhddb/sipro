@@ -25,6 +25,13 @@ export const PORTAL = {
   complaintSubmit: "portal-complaint-submit",
   // Fase 28b — peta kavling & foto progres untuk pembeli
   tabPlan: "portal-tab-plan",
+  // Jadwal angsuran KPR pembeli (fixed → floating) sesudah SP3K
+  tabKpr: "portal-tab-kpr",
+  kprPanel: "portal-kpr-panel",
+  kprCard: "portal-kpr-card",
+  kprEmpty: "portal-kpr-empty",
+  kprPending: "portal-kpr-pending",
+  kprScheduleRow: "portal-kpr-schedule-row",
   planPanel: "portal-plan-panel",
   myUnitCard: "portal-my-unit-card",
   progressPhotos: "portal-progress-photos",

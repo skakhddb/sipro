@@ -244,3 +244,68 @@ async def kpr_reject(org: str, contract_id: str, reason: str, file_id: str,
                              f"{pct:g}% ({_rp(refund)}) sesuai ketentuan SPR."))
     return await db.financing_apps.find_one({"id": app["id"]}, {"_id": 0})
 
+
+
+async def amend_terms(org: str, contract_id: str, payload: dict, actor: str) -> dict:
+    """Bank mengubah tenor/bunga/produk SESUDAH SP3K terbit: nilai lama disimpan di
+    `terms_amendments` (bukan ditimpa diam-diam), nilai baru menjadi acuan jadwal angsuran."""
+    c = await _ce().get_raw(org, contract_id)
+    if c.get("scheme") != "kpr":
+        raise ValueError("Kontrak ini bukan skema KPR.")
+    app = await _kpr_app(org, c)
+    if not app or not (app.get("sp3k") or {}).get("file_id"):
+        raise ValueError("Amandemen hanya untuk pengajuan yang SP3K-nya sudah tercatat.")
+    if app.get("kpr_stage") == "ditolak":
+        raise ValueError("Pengajuan sudah ditolak bank — tidak ada tenor/bunga yang bisa diamandemen.")
+    tenor = int(payload.get("tenor_months") or 0)
+    rate = float(payload.get("rate") if payload.get("rate") is not None else -1)
+    if tenor <= 0 or rate < 0:
+        raise ValueError("Tenor (bulan) dan bunga (%/th) wajib diisi.")
+    reason = (payload.get("reason") or "").strip()
+    if len(reason) < 5:
+        raise ValueError("Alasan amandemen minimal 5 huruf (mis. 'Bank menurunkan bunga promo').")
+    before = {"tenor_months": int(app.get("tenor_months") or 0), "interest_rate_pct": float(app.get("interest_rate_pct") or 0),
+              "kpr_product_id": app.get("kpr_product_id"), "kpr_product_name": app.get("kpr_product_name")}
+    after = {"tenor_months": tenor, "interest_rate_pct": rate,
+             "kpr_product_id": payload.get("kpr_product_id") or None, "kpr_product_name": payload.get("kpr_product_name") or None}
+    if before == after:
+        raise ValueError("Tidak ada yang berubah — tenor, bunga, dan produk sama dengan sebelumnya.")
+    ts = now_iso()
+    entry = {"at": ts, "by": actor, "reason": reason, "file_id": payload.get("file_id"),
+             "before": before, "after": after}
+    await db.financing_apps.update_one({"id": app["id"]}, {
+        "$set": {**after, "sp3k.tenor": tenor, "sp3k.rate": rate,
+                 "sp3k.product_id": after["kpr_product_id"], "sp3k.product_name": after["kpr_product_name"],
+                 "updated_at": ts},
+        "$push": {"terms_amendments": entry}})
+    await add_activity(entity_type="customer", entity_id=c.get("customer_id"), type="system",
+                       actor=actor, org_id=org,
+                       body=(f"Amandemen KPR: tenor {before['tenor_months']}→{tenor} bulan, bunga "
+                             f"{before['interest_rate_pct']:g}→{rate:g}%/th"
+                             + (f", produk {after['kpr_product_name']}" if after["kpr_product_name"] else "")
+                             + f". Alasan: {reason}"))
+    return await db.financing_apps.find_one({"id": app["id"]}, {"_id": 0})
+
+
+async def schedule_of(org: str, contract: dict) -> dict:
+    """Jadwal angsuran simulasi untuk pengajuan KPR kontrak (None bila SP3K belum tercatat)."""
+    from kpr_schedule import yearly_schedule
+    app = await _kpr_app(org, contract) if contract.get("scheme") == "kpr" else None
+    if not app:
+        return {"available": False, "reason": "Kontrak ini bukan skema KPR / belum ada pengajuan."}
+    sp3k = app.get("sp3k") or {}
+    plafon = int(app.get("approved_plafon") or 0)
+    if not (sp3k.get("file_id") and plafon > 0 and int(app.get("tenor_months") or 0) > 0):
+        return {"available": False, "reason": "Jadwal angsuran tersedia setelah SP3K bank tercatat (plafon & tenor).",
+                "bank_name": app.get("bank_name"), "stage": app.get("kpr_stage")}
+    prod = await db.kpr_products.find_one({"org_id": org, "id": app.get("kpr_product_id")}, {"_id": 0}) \
+        if app.get("kpr_product_id") else None
+    fixed_years = (prod or {}).get("fixed_years")
+    floating = (prod or {}).get("floating_rate_pct")
+    sched = yearly_schedule(plafon, app["tenor_months"], float(app.get("interest_rate_pct") or 0), fixed_years, floating)
+    return {"available": True, "bank_name": app.get("bank_name"), "product_name": app.get("kpr_product_name"),
+            "plafon": plafon, "tenor_months": int(app["tenor_months"]), "interest_rate_pct": float(app.get("interest_rate_pct") or 0),
+            "fixed_years": fixed_years, "floating_rate_pct": floating, "stage": app.get("kpr_stage"),
+            "stage_label": ref.label_of("kpr_stage", app.get("kpr_stage")),
+            "sp3k": {"number": sp3k.get("number"), "date": sp3k.get("date"), "valid_until": sp3k.get("valid_until")},
+            "amendments": app.get("terms_amendments") or [], **sched}

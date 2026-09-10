@@ -156,9 +156,10 @@ def _parse_rows(content: bytes) -> tuple[list, list]:
 
 
 @router.post("/import")
-async def import_products(file: UploadFile = File(...),
+async def import_products(file: UploadFile = File(...), dry_run: bool = False,
                           user: dict = Depends(require_permission("settings", "manage"))):
-    """Impor massal: baris valid disimpan (bank+nama sama → diperbarui), baris salah dilaporkan."""
+    """Impor massal. `dry_run=true` → PRATINJAU (baris + aksi buat/perbarui + kesalahan) tanpa
+    menyimpan; tanpa dry_run → baris valid disimpan (bank+nama sama → diperbarui)."""
     if not (file.filename or "").lower().endswith(".xlsx"):
         raise HTTPException(status_code=400, detail="Berkas harus berekstensi .xlsx.")
     content = await file.read()
@@ -166,8 +167,7 @@ async def import_products(file: UploadFile = File(...),
         raise HTTPException(status_code=400, detail="Berkas kosong atau melebihi 5 MB.")
     items, errors = _parse_rows(content)
     org = user.get("org_id", ORG_ID)
-    created, updated = [], []
-    seen = set()
+    plan, seen = [], set()
     for it in items:
         rn = it.pop("_row")
         key = (it["bank_name"].lower(), it["name"].lower())
@@ -175,9 +175,19 @@ async def import_products(file: UploadFile = File(...),
             errors.append(f"Baris {rn}: duplikat {it['bank_name']} / {it['name']} di berkas — dilewati.")
             continue
         seen.add(key)
-        cur = await db[COLL].find_one({"org_id": org, "bank_name": it["bank_name"], "name": it["name"]}, {"_id": 0, "id": 1})
-        if cur:
-            await db[COLL].update_one({"id": cur["id"]}, {"$set": {**it, "updated_at": now_iso()}})
+        cur = await db[COLL].find_one({"org_id": org, "bank_name": it["bank_name"], "name": it["name"]},
+                                      {"_id": 0, "id": 1, "tenors": 1, "interest_rate_pct": 1})
+        plan.append({**it, "row": rn, "action": "update" if cur else "create", "existing_id": (cur or {}).get("id"),
+                     "changes": [k for k in ("tenors", "interest_rate_pct") if cur and cur.get(k) != it[k]] if cur else []})
+    if dry_run:
+        return {"data": {"preview": plan, "errors": errors, "rows": len(plan),
+                         "to_create": sum(p["action"] == "create" for p in plan),
+                         "to_update": sum(p["action"] == "update" for p in plan)}}
+    created, updated = [], []
+    for p in plan:
+        it = {k: v for k, v in p.items() if k not in ("row", "action", "existing_id", "changes")}
+        if p["existing_id"]:
+            await db[COLL].update_one({"id": p["existing_id"]}, {"$set": {**it, "updated_at": now_iso()}})
             updated.append(f"{it['bank_name']} / {it['name']}")
         else:
             doc = {"id": new_id(), "org_id": org, **it, "created_by": user.get("email"),

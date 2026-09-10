@@ -86,6 +86,16 @@ class KprStageIn(BaseModel):
     kpr_product_name: Optional[str] = None
 
 
+class KprAmendTermsIn(BaseModel):
+    """Amandemen tenor/bunga/produk sesudah SP3K (bank mengubah ketentuan)."""
+    tenor_months: int
+    rate: float
+    kpr_product_id: Optional[str] = None
+    kpr_product_name: Optional[str] = None
+    reason: str
+    file_id: Optional[str] = None
+
+
 class KprRejectIn(BaseModel):
     reason: str
     file_id: Optional[str] = None

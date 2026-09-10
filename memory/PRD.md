@@ -246,3 +246,9 @@ Keputusan default yang dipakai (belum dikonfirmasi pemilik): K-1 satukan templat
 - Token dokumen `kpr_terms`/`kpr_terms_line` (SPR KPR via dp_line, SPKT).
 - Impor Excel produk KPR (template + upsert + laporan baris bermasalah).
 - Backlog: pratinjau impor sebelum simpan; tampilkan jadwal angsuran per tahun (fixed→floating) di portal pembeli; item lama plan.md §11.
+
+## Update 2026-09-10 #3 — KPR lanjutan (selesai, iteration_27 100%)
+- Pratinjau impor Excel produk KPR (dry-run) sebelum simpan.
+- Jadwal angsuran per tahun (fixed → floating) di portal pembeli tab KPR & kotak jadwal staf; satu mesin `kpr_schedule.py`.
+- Amandemen tenor/bunga/produk sesudah SP3K dengan riwayat before/after.
+- Backlog: bandingkan produk bank berdampingan untuk sales; notifikasi WA ke pembeli saat amandemen; tampilkan amandemen di dokumen addendum.

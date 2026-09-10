@@ -510,3 +510,13 @@ Sesi sebelumnya terputus di tengah penutupan temuan uji iterasi 102. Yang dilaku
 | `components/master/KprProductsPanel.js` — tabel + dialog tambah/ubah/arsip, saklar "Tampilkan arsip"; tab **Produk KPR** di Master Data (`EditGate settings`); testIds `MASTER.kpr*` | **SELESAI** |
 | Index unik `uq_kpr_product_bank_name` (org_id, bank_name, name) | **SELESAI** |
 | Uji: testing agent iteration_25 — backend 14 pytest (`tests/test_kpr_products.py`) + RBAC + financing/SP3K field persist; UI CRUD master & KprTermsPicker di dialog Ajukan KPR 100% lulus. Alur UI SP3K di kontrak belum dieksekusi e2e (tak ada kontrak seed di tahap sp3k) | **SELESAI** |
+
+## 3aa) Sesi 2026-09-10 #2 — SP3K demo, simulasi angsuran, nama produk di ringkasan & dokumen, impor Excel (SELESAI)
+
+| Bagian | Status |
+|---|---|
+| `scripts/seed_kpr_sp3k_demo.py` — lead → SLIK → reservasi → BF → booking → konversi KPR → diajukan_ke_bank (BTN) → appraisal; berhenti di depan SP3K, cetak URL `/customers/{id}?tab=kontrak53` | **SELESAI** |
+| `KprTermsPicker`: prop `plafon`, `monthlyInstallment()` anuitas, hint `${prefix}-installment` (fixed + floating); dipasang di dialog Ajukan KPR & SP3K (plafon SP3K kini `RupiahInput`, testid `kpr-sp3k-plafon`) | **SELESAI** |
+| `KprPanel` header `kpr-header-terms` (produk · bunga · est. angsuran); docgen `kpr_terms_text()`, token `{{kpr_terms}}`/`{{kpr_terms_line}}` (terdaftar di `doc_script.DOCGEN_TOKENS`), `dp_line` SPR KPR memuat "Fasilitas KPR : …", `_SPKT` memuat `{{kpr_terms_line}}` | **SELESAI** |
+| Impor Excel produk KPR: `GET /master/kpr-products/import-template.xlsx`, `POST /master/kpr-products/import` (upsert bank+nama, laporan kesalahan per baris, `settings:manage`); UI tombol Template Excel / Impor Excel + kotak laporan (`MASTER.kprImport*`) | **SELESAI** |
+| Uji: testing agent iteration_26 — 10 pytest (`tests/test_kpr_iter26.py`) + UI SP3K e2e, impor, angsuran 100% lulus | **SELESAI** |

@@ -146,7 +146,7 @@ No. Telepon : {{customer_phone}}
 Nama Properti : {{property_name}}
 Alamat : {{property_address}}
 Blok : {{unit_block}}
-
+{{kpr_terms_line}}
 Dengan ini menyatakan bahwa unit yang dipesan memiliki kelebihan tanah dengan rincian sebagai berikut:
 Luas Tanah Standar : {{standard_land_area}}
 Estimasi Kelebihan Tanah : {{excess_land_m2}}
@@ -309,6 +309,20 @@ def term_line(no: int, t: dict) -> str:
     return line
 
 
+def kpr_terms_text(app: dict | None) -> str:
+    """'BTN — KPR Subsidi FLPP · tenor 240 bulan · bunga 5%/th' dari pengajuan KPR (SSOT
+    Produk KPR); kosong bila belum ada pengajuan/produk yang dipilih."""
+    if not app:
+        return ""
+    parts = [str(app[k]) for k in ("bank_name", "kpr_product_name") if app.get(k)]
+    tail = []
+    if int(app.get("tenor_months") or 0):
+        tail.append(f"tenor {int(app['tenor_months'])} bulan")
+    if float(app.get("interest_rate_pct") or 0):
+        tail.append(f"bunga {float(app['interest_rate_pct']):g}%/th")
+    return " · ".join([x for x in [" — ".join(parts)] + tail if x])
+
+
 def buyer_incomplete_labels(bd: dict) -> list:
     """Komponen biaya PEMBELI yang kosong (subset `costs_incomplete_labels`, label manusia) —
     pajak penjual (PPh) bukan urusan total pembeli, jadi tidak membuat SPR "sementara"."""
@@ -329,6 +343,10 @@ async def build_context(org: str, contract: dict, code: str, *, actor_name: str,
     cust = await db.customers.find_one({"id": contract.get("customer_id")}, {"_id": 0}) or {}
     deal = await db.deals.find_one({"id": contract.get("deal_id")}, {"_id": 0}) or {}
     scheme = contract.get("scheme")
+    kpr_app = await db.financing_apps.find_one(
+        {"org_id": org, "deal_id": contract.get("deal_id")}, {"_id": 0},
+        sort=[("created_at", -1)]) if scheme == "kpr" else None
+    kpr_terms = kpr_terms_text(kpr_app)
 
     def row(c):
         for r in bd["rows"]:
@@ -460,7 +478,10 @@ async def build_context(org: str, contract: dict, code: str, *, actor_name: str,
         "land_area": f"{unit.get('land_area')} m²" if unit.get("land_area") else BELUM,
         "selling_price": money("UNIT_PRICE"),
         "dp_line": ((f"Plafon Kredit : {money('PLAFON_KREDIT')}\n" if scheme == "kpr" else "")
+                    + (f"Fasilitas KPR : {kpr_terms}\n" if scheme == "kpr" and kpr_terms else "")
                     + "Uang Muka : " + (_pct(dp_pct) if dp_pct is not None else BELUM)),
+        "kpr_terms": kpr_terms or BELUM,
+        "kpr_terms_line": f"Fasilitas KPR : {kpr_terms}\n" if kpr_terms else "",
         "booking_fee": money("BOOKING_FEE"),
         "addon_rows": addon_rows,
         "cost_rows": cost_rows,

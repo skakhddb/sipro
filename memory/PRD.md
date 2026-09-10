@@ -239,3 +239,10 @@ Keputusan default yang dipakai (belum dikonfirmasi pemilik): K-1 satukan templat
 - KprTermsPicker dipakai di dialog Ajukan KPR (pelanggan) dan tahap SP3K (kontrak); product_id/name tersimpan di financing & sp3k.
 - Index unik kpr_products (org_id, bank_name, name). Testing agent iteration_25: 100% backend & frontend.
 - Backlog berikutnya: uji e2e UI SP3K dengan kontrak KPR sungguhan; tampilkan nama produk KPR di ringkasan KprPanel & dokumen SPR/SPKT; item lama di plan.md §11.
+
+## Update 2026-09-10 #2 — KPR lanjutan (selesai, iteration_26 100%)
+- Seed kontrak demo di gerbang SP3K (`scripts/seed_kpr_sp3k_demo.py`); dialog SP3K terverifikasi e2e dengan pemilih produk.
+- Simulasi angsuran anuitas di KprTermsPicker (Ajukan KPR & SP3K); header KprPanel menampilkan produk/bunga/est. angsuran.
+- Token dokumen `kpr_terms`/`kpr_terms_line` (SPR KPR via dp_line, SPKT).
+- Impor Excel produk KPR (template + upsert + laporan baris bermasalah).
+- Backlog: pratinjau impor sebelum simpan; tampilkan jadwal angsuran per tahun (fixed→floating) di portal pembeli; item lama plan.md §11.

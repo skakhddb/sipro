@@ -1,0 +1,23 @@
+{
+  "summary": "Iteration 26: verified SP3K flow with KprTermsPicker + installment sim, Excel import (template + upload) for Master Produk KPR, docgen tokens (kpr_terms, kpr_terms_line, dp_line), and financing dialog installment. Backend: 10/10 pytest passed (template download, template roundtrip import, mixed-rows import with error reporting, non-xlsx rejection, sales 403, list, duplicate 409, SP3K stage persist, docgen tokens via in-process import). Frontend: SP3K dialog on demo contract — product auto-select 'KPR Subsidi FLPP', tenor 240, rate 5 readonly, installment @240 = Rp 1.649.889/bln (exact spec), @180 = Rp 1.976.984/bln (spec ≈1.977.030, ±46 rp rounding), submit → toast 'Tahap KPR diperbarui.', header 'Produk KPR Subsidi FLPP · bunga 5%/th · est. angsuran Rp 1.649.889/bln'. Master Data → Produk KPR: template download filename SIPRO_Template_Produk_KPR.xlsx, upload → report '1 baru · 0 diperbarui · 0 baris bermasalah' + toast '1 produk baru, 0 diperbarui.' and table refreshed with Mandiri row. Financing dialog for BTN plafon 300jt → installment Rp 1.979.867/bulan (exact spec). No defects found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_kpr_iter26.py",
+    "/app/test_reports/pytest/iter26_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "KprPanel: valid_until field uses DatePickerField which is a button (not text input) — for a11y/tests, adding an aria-label with the expected date format would help. Not a bug.",
+    "monthlyInstallment @180/5% differs by 46 rupiah from the expected value in the problem statement (1.976.984 vs 1.977.030). This is due to rounding (Math.round of annuity formula). Not a defect; documentation nit.",
+    "kpr_products_router.import_products: duplicate detection within a single file relies on lowercased (bank_name, name) tuple — good. Row numbers in error messages correctly refer to the 1-based sheet rows including header."
+  ],
+  "updated_files": ["/app/backend/tests/test_kpr_iter26.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "superadmin@sipro.co.id / Sipro#2026 (super_admin); sales@sipro.co.id / Sipro#2026 (sales)",
+  "seed_data_creation": "Ran /app/scripts/seed_kpr_sp3k_demo.py once (fresh SP3K-gate contract: id 48c5ec2e-ff8f-4a06-ad04-a28dfaaaa034, customer b63337fc-28e1-4ad2-a8f8-87a5de11e5d2). Backend pytest advanced original demo (c3e19de7…) past SP3K. Some ephemeral test products under bank_name='Mandiri' (TEST names with unix timestamp) were archived by tests; one 'Mandiri UI Test 1789042870' from UI test remains (aktif) — cosmetic pollution.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Original demo contract c3e19de7… now past SP3K (was advanced by test_sp3k_record_updates_application). The seed script re-run created 48c5ec2e-ff8f-4a06-ad04-a28dfaaaa034 which was used for UI SP3K test and is now also past SP3K. To retest, re-run `python3 /app/scripts/seed_kpr_sp3k_demo.py` to get a fresh contract. All features working end-to-end.",
+  "rca of the issue": "N/A — no defects."
+}

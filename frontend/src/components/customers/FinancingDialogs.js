@@ -94,7 +94,7 @@ export function AddFinancingDialog({ open, onOpenChange, customer, onDone }) {
             <RupiahInput id="pl" value={form.plafon} onChange={(e) => set("plafon", e.target.value)} /></div>
           <div className="space-y-1.5"><Label htmlFor="dp">DP (Rp)</Label>
             <RupiahInput id="dp" value={form.dp_amount} onChange={(e) => set("dp_amount", e.target.value)} /></div>
-          <KprTermsPicker bankName={form.bank_name} testIdPrefix="financing-terms"
+          <KprTermsPicker bankName={form.bank_name} testIdPrefix="financing-terms" plafon={form.plafon}
             value={{ product_id: form.product_id, product_name: form.product_name, tenor_months: form.tenor_months, interest_rate_pct: form.interest_rate_pct }}
             onChange={(v) => setForm((f) => ({ ...f, ...v }))} />
         </div>

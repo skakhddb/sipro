@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RupiahInput } from "@/components/ui/rupiah-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -15,7 +16,7 @@ import {
 import EvidenceUploader from "@/components/patterns/EvidenceUploader";
 import ReferenceSelect from "@/components/patterns/ReferenceSelect";
 import DatePickerField from "@/components/patterns/DatePickerField";
-import KprTermsPicker from "@/components/patterns/KprTermsPicker";
+import KprTermsPicker, { monthlyInstallment } from "@/components/patterns/KprTermsPicker";
 import KprDisbursementBox from "@/components/contracts/KprDisbursementBox";
 import CashAccountSelect from "@/components/cashBank/CashAccountSelect";
 import { useAuth } from "@/context/AuthContext";
@@ -114,6 +115,14 @@ export default function KprPanel({ contract, onChanged }) {
             {app.approved_plafon ? ` · plafon disetujui ${formatIDR(app.approved_plafon)}` : ""}
             {app.tenor_months ? ` · tenor ${app.tenor_months} bulan` : ""}
           </p>
+          {app.kpr_product_name || app.interest_rate_pct ? (
+            <p data-testid="kpr-header-terms" className="text-xs text-muted-foreground">
+              Produk {app.kpr_product_name || "—"}
+              {app.interest_rate_pct ? ` · bunga ${app.interest_rate_pct}%/th` : ""}
+              {app.approved_plafon && app.tenor_months && app.interest_rate_pct
+                ? ` · est. angsuran ${formatIDR(monthlyInstallment(app.approved_plafon, app.interest_rate_pct, app.tenor_months))}/bln` : ""}
+            </p>
+          ) : null}
         </div>
         {mayUpdate && app.kpr_stage !== "ditolak" ? (
           <Button data-testid={P53.kprRejectBtn} size="sm" variant="outline"
@@ -219,13 +228,13 @@ export default function KprPanel({ contract, onChanged }) {
             {fields.includes("plafon") ? (
               <div className="space-y-1.5">
                 <Label htmlFor="kpr-plafon">Plafon DISETUJUI bank (wajib)</Label>
-                <Input id="kpr-plafon" inputMode="numeric" className="bg-background"
+                <RupiahInput id="kpr-plafon" data-testid="kpr-sp3k-plafon" className="bg-background"
                   value={form.plafon || ""} onChange={(e) => set("plafon", e.target.value)} />
               </div>
             ) : null}
             {fields.includes("tenor_months") ? (
               <div className="grid gap-3 sm:grid-cols-2">
-                <KprTermsPicker bankName={form.bank || app.bank || app.bank_name || ""} testIdPrefix="kpr-sp3k-terms"
+                <KprTermsPicker bankName={form.bank || app.bank || app.bank_name || ""} testIdPrefix="kpr-sp3k-terms" plafon={form.plafon}
                   value={{ product_id: form.product_id || "", product_name: form.product_name || "", tenor_months: form.tenor_months || "", interest_rate_pct: form.rate || "" }}
                   onChange={(v) => setForm((f) => ({ ...f, product_id: v.product_id, product_name: v.product_name, tenor_months: v.tenor_months, rate: v.interest_rate_pct }))} />
               </div>

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Archive, Pencil, Plus } from "lucide-react";
+import { Archive, Download, Pencil, Plus, Upload } from "lucide-react";
 
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import ReferenceSelect from "@/components/patterns/ReferenceSelect";
 import api from "@/services/apiClient";
+import { blobErrorDetail, downloadFile } from "@/utils/fileDownload";
 import { MASTER } from "@/constants/testIds";
 
 const EMPTY = { bank_name: "", name: "", tenors: "60, 120, 180, 240", interest_rate_pct: "",
@@ -129,6 +130,9 @@ export default function KprProductsPanel() {
   const [loading, setLoading] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
   const [dialog, setDialog] = useState({ open: false, product: null });
+  const [report, setReport] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef(null);
 
   const load = async () => {
     setLoading(true);
@@ -140,6 +144,28 @@ export default function KprProductsPanel() {
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, [showInactive]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const upload = async (file) => {
+    if (!file) return;
+    setImporting(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await api.post("/master/kpr-products/import", fd);
+      const d = r.data.data;
+      setReport(d);
+      if (d.rows) toast.success(`${d.created.length} produk baru, ${d.updated.length} diperbarui${d.errors.length ? `, ${d.errors.length} baris bermasalah` : ""}.`);
+      else toast.error(d.errors[0] || "Tidak ada baris valid di berkas.");
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Impor gagal.");
+    } finally { setImporting(false); if (fileRef.current) fileRef.current.value = ""; }
+  };
+
+  const downloadTemplate = async () => {
+    try { await downloadFile("/master/kpr-products/import-template.xlsx", { fallbackName: "SIPRO_Template_Produk_KPR.xlsx" }); }
+    catch (e) { toast.error(await blobErrorDetail(e, "Gagal mengunduh template.")); }
+  };
 
   const archive = async (p) => {
     try {
@@ -158,16 +184,36 @@ export default function KprProductsPanel() {
           Produk KPR per bank: tenor yang tersedia dan suku bunga. Dipakai form pengajuan KPR
           (Pelanggan & Kontrak) dan tahap SP3K sebagai satu-satunya sumber tenor & bunga.
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
             <Switch data-testid={MASTER.kprShowInactive} checked={showInactive} onCheckedChange={setShowInactive} />
             Tampilkan arsip
           </label>
+          <input ref={fileRef} data-testid={MASTER.kprImportFile} aria-label="Berkas Excel produk KPR" type="file" accept=".xlsx"
+            className="hidden" disabled={importing} onChange={(e) => upload(e.target.files?.[0])} />
+          <Button data-testid={MASTER.kprTemplateBtn} size="sm" variant="ghost" onClick={downloadTemplate}>
+            <Download className="mr-1.5 h-3.5 w-3.5" /> Template Excel
+          </Button>
+          <Button data-testid={MASTER.kprImportBtn} size="sm" variant="outline" disabled={importing} onClick={() => fileRef.current?.click()}>
+            <Upload className="mr-1.5 h-3.5 w-3.5" /> {importing ? "Mengimpor…" : "Impor Excel"}
+          </Button>
           <Button data-testid={MASTER.kprAddBtn} size="sm" onClick={() => setDialog({ open: true, product: null })}>
             <Plus className="mr-1.5 h-4 w-4" /> Tambah produk
           </Button>
         </div>
       </div>
+
+      {report ? (
+        <div data-testid={MASTER.kprImportReport} className="space-y-1 rounded-lg border bg-muted/30 p-3 text-xs">
+          <div className="flex items-center justify-between">
+            <p><b>Hasil impor:</b> {report.created.length} baru · {report.updated.length} diperbarui · {report.errors.length} baris bermasalah</p>
+            <button type="button" className="text-muted-foreground underline" onClick={() => setReport(null)}>tutup</button>
+          </div>
+          {report.errors.length ? (
+            <ul className="list-disc pl-4 text-rose-700">{report.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">

@@ -1,0 +1,34 @@
+{
+  "summary": "Iter23 — Manajemen Data → tab 'Semua Data (Ekspor/Impor)'. Backend: pytest /app/backend/tests/test_iter23_datamgmt_full.py → 13/13 PASSED (7.44s) mencakup collections+RBAC (sales 403), export.xlsx (selected sheets + _INDEX + baris tipe, 400 utk koleksi tidak dikenal), sesi impor dengan semua kelas isu (phone info+saran +62, org_id error+org-sipro, price teks→error+1250000000, status fuzzy warning→available, JSON rusak→error+JSON valid, id kosong→insert+info, baris tak berubah→same), edit sel via /cells menghapus error, /delete-rows mengurangi total, /commit menolak confirm≠IMPOR (400), commit mode update benar-benar menulis ke db.customers dan mengembalikan snapshot pra-impor-semua-data, commit mode replace pada `workers` menghapus baris dummy TEST_ yang tidak ada di sheet, DELETE session→GET 404. Snapshot 'pra-impor-semua-data' muncul di /api/data-mgmt/snapshots. UI (superadmin): /admin/data-management → tab datamgmt-tab-full menampilkan fulldata-panel dengan 5 checkbox kelompok (fulldata-export-group-check-*), tombol fulldata-export-all aktif, fulldata-export-selected dinonaktifkan bila semua terpilih; upload xlsx (fulldata-import-file + fulldata-import-upload) membuka fulldata-workbench dengan totals BARU/DIUBAH/SAMA/ERROR/PERINGATAN/SARAN benar (0/2/25/2/1/4), tab customers/units dengan badge, filter Semua/error/warning berfungsi, panel Temuan (fulldata-issue-list) menampilkan issue dengan suggestion & tombol fulldata-issue-apply-<row>-<col> — klik menurunkan ERROR 2→1 dan SARAN 4→3 dengan validasi ulang otomatis, fulldata-apply-all menerapkan sisa error/warning saja (info +62 sengaja tidak diterapkan), fulldata-commit-open→dialog dengan submit dinonaktifkan sebelum ketik IMPOR di fulldata-commit-confirm, submit sukses menampilkan fulldata-commit-result 'Impor selesai (mode update) — 0 baru · 1 diperbarui · 28 sama · 0 dihapus · 0 dilewati' + nama snapshot pengaman; tombol fulldata-close mengembalikan ke daftar sesi, sesi teratas ditandai 'sudah diimpor (update)'. Regresi tab datamgmt-tab-migration masih memuat dan datamgmt-download-template masih tampil.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ImportWorkbench › SheetGrid", "issues": ["Klik langsung pada sel bermasalah (fulldata-grid-cell-<row>-<col>) untuk membuka fulldata-cell-popover kerap terhalang oleh popper wrapper Select 'Semua baris'/dropdown filter (radix-popper-content-wrapper masih menahan pointer setelah dropdown tertutup logis). Solusi cepat: pastikan Select filter melepas overlay setelah value dipilih (onOpenChange→blur trigger) atau tambahkan pointer-events:none pada wrapper ketika data-state=closed. Alur alternatif via fulldata-issue-apply-<row>-<col> bekerja normal, jadi bukan blocker."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter23_datamgmt_full.py",
+    "/app/test_reports/pytest/iter23.xml"
+  ],
+  "action_items": [
+    "Non-blocking: perbaiki intercept pointer events dari radix Select 'Semua baris'/dropdown mode commit yang menahan klik pada sel grid setelah dropdown ditutup (agar fulldata-grid-cell-* dapat diklik langsung untuk buka fulldata-cell-popover)."
+  ],
+  "critical_code_review_comments": [
+    "data_mgmt_full_router.commit_session hanya memvalidasi confirm=='IMPOR' — string 'impor' (lowercase) sudah diterima karena .upper(). OK, tapi pertimbangkan agar body.confirm dibersihkan dari whitespace zero-width (mis. \\u200b) yang bisa lolos strip().",
+    "data_mgmt_full_schema.list_collections mengembalikan semua koleksi termasuk yang di GROUP EXCLUDED sudah difilter; namun EXCLUDED tidak menyertakan koleksi audit besar (`audit_logs`, `notifications`) — ekspor 'semua' bisa sangat besar. Pertimbangkan filter default agar UI 'Ekspor semua koleksi' tidak menarik ratusan MB.",
+    "commit mode 'replace' menghapus dokumen yang tidak ada di sheet — sudah divalidasi berfungsi di uji workers. Kunci id harus unik & konsisten; catat di dokumentasi UI bahwa jika baris workbook memiliki id kosong pada mode replace, dokumen existing dengan id yang sama akan dianggap tidak-hadir dan dihapus (potensi kehilangan data). Sudah ditangani di uji.",
+    "Frontend SheetGrid: tombol Select filter 'Semua baris' menaruh popper wrapper yang menutupi grid pointer (radix). Pertimbangkan menutup popper sepenuhnya (unmountOnClose) atau pindahkan filter ke dropdown non-portal."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter23_datamgmt_full.py (baru)"
+  ],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100% alur inti (upload→edit saran→commit) + regresi"},
+  "test_credentials": "superadmin@sipro.co.id / Sipro#2026, sales@sipro.co.id / Sipro#2026 (untuk cek 403)",
+  "seed_data_creation": "1 worker dummy TEST_iter23_worker_delete disisipkan lewat pymongo sinkron untuk uji mode replace, dihapus pada teardown fixture. Uji commit update customers mengembalikan nama asli lewat sesi kedua (idempotent). Total 2 sesi impor testing tercipta di UI (ui_test_iter23.xlsx via UI + smoke sebelumnya via CLI).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Cmd: cd /app/backend && python -m pytest tests/test_iter23_datamgmt_full.py -q. Endpoint baru: /api/data-mgmt/full/collections|export.xlsx|sessions|sessions/{sid}|sessions/{sid}/sheets/{sheet}|sessions/{sid}/cells (PATCH)|sessions/{sid}/delete-rows (POST)|sessions/{sid}/commit (POST)|sessions/{sid} (DELETE). UI testIds di FULLDATA (/app/frontend/src/constants/testIds/dataMgmt.js). Alur happy: upload xlsx → workbench → apply suggestions via fulldata-issue-apply-<row>-<col> atau fulldata-apply-all → fulldata-commit-open → isi 'IMPOR' di fulldata-commit-confirm → fulldata-commit-submit → hasil di fulldata-commit-result. Untuk uji mode replace pakai koleksi kecil (workers/materials). Sesi disimpan di /app/backend/backups/org-sipro/import_sessions. Bug minor: overlay radix Select filter menahan klik sel — pakai fulldata-issue-apply-* alih-alih klik grid cell.",
+  "rca of the issue": "Bug minor UI (overlay Select filter menahan klik sel grid): radix-popper-content-wrapper Select 'Semua baris' tetap terpasang sebagai portal dengan dimensi menutupi area grid setelah value dipilih (data-state=closed tidak melepaskan pointer). Reproduksi: buka workbench, klik dropdown 'Semua baris', pilih 'Semua baris', langsung coba klik fulldata-grid-cell-<row>-<col> di baris atas — pointer diintersept popper wrapper. Mitigasi: gunakan Select shadcn dengan portal={false} atau pindahkan filter ke SegmentedControl, atau paksa remove popper wrapper saat closed."
+}

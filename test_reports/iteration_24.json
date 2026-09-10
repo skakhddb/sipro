@@ -1,0 +1,26 @@
+{
+  "summary": "Iterasi 24 — Manajemen Data → Semua Data. Diuji dua fitur baru: (1) LAPORAN VALIDASI EXCEL dan (2) CEK KONSISTENSI SILANG. Backend: 5/5 pytest baru lulus di test_iter24_datamgmt_full_checks.py + regresi iter23 13/13 lulus. UI: workbench menampilkan panel cross-checks (fulldata-checks-panel dengan 5 item), toggle collapse/expand berfungsi, 'Lihat baris' berpindah tab ke ar_invoices, stat 'Cek silang' terlihat di totals, tombol 'Laporan validasi (Excel)' mengunduh xlsx (15,5 KB), dialog commit menampilkan peringatan fulldata-commit-checks-warning dan tombol submit aktif setelah ketik IMPOR (tidak di-submit untuk menjaga data demo).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter24_datamgmt_full_checks.py",
+    "/app/test_reports/pytest/iter24.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "data_mgmt_full_checks._merged: mengelompokkan AR-in-DB via _sheet_row untuk membedakan asal (sheet vs DB) — pola sederhana & benar; hanya catatan gaya: 'private' key '_sheet_row' bocor keluar via merged doc, sebaiknya di-pop sebelum digunakan lebih lanjut (saat ini aman karena hanya dibaca di cross_checks).",
+    "data_mgmt_full_report._decorate: bila cell punya issue + juga changed, fill issue akan menimpa fill 'changed' — sesuai desain, tapi tidak ada info visual bahwa sel itu juga berubah dari DB; opsional: gunakan border/hint tambahan. Bukan bug.",
+    "cross_checks toleransi TOL=1 rupiah — konservatif, aman.",
+    "CrossChecksPanel.js: key={k} pakai index; jika daftar dinamis, gunakan `${code}-${key}` untuk stabilitas render, meski tidak menimbulkan bug fungsional saat ini."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter24_datamgmt_full_checks.py"
+  ],
+  "success_rate": {"backend": "100% (5/5 baru; 13/13 regresi iter23)", "frontend": "100% (semua interaksi baru diverifikasi)"},
+  "test_credentials": "superadmin@sipro.co.id / Sipro#2026",
+  "seed_data_creation": "Fixture pytest membuat sesi impor edited (ar_invoices,deals,customers) berisi ~5 peringatan cross-check; sesi dihapus setelah test. Untuk UI dipakai sid yang di-seed manual lalu dihapus.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Fitur report.xlsx + cross-checks stabil. Bila ada perubahan pada data_mgmt_full_checks.py, jalankan ulang tests/test_iter24_datamgmt_full_checks.py + test_iter23_datamgmt_full.py. Waspadai shift index baris saat sheet dimodifikasi (delete_rows), sudah ditangani di fixture.",
+  "rca of the issue": "N/A — tidak ada bug baru; awalnya test gagal karena db_side dapat sama dengan 'other AR' → dipilih ulang setelah delete_rows di sheet, membuat perhitungan cross-check baris menjadi konsisten."
+}

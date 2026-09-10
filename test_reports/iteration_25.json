@@ -1,0 +1,25 @@
+{
+  "summary": "Verified Master Produk KPR end-to-end. Backend: 14/15 pytest cases pass; 1 skipped fixture-only and replaced with an inline manual POST /api/financing test that confirmed kpr_product_id + kpr_product_name persist. Also verified SP3K endpoint accepts new fields (no 422). RBAC (sales GET ok, POST/PUT/DELETE 403) working. Frontend: Master Data \u2192 tab 'Produk KPR' full CRUD (create, edit, archive, show-inactive toggle, empty-name validation error toast) works. Customer financing dialog (customer detail \u2192 KPR tab \u2192 Ajukan KPR) integrates KprTermsPicker: for BTN (has product) it auto-selects product, tenor 240, rate 5 read-only; for BCA (no products) it shows manual tenor/rate inputs and no-master hint. Contract KprPanel not exercised end-to-end (no seeded contract at SP3K stage) but SP3K endpoint accepts kpr_product_id/name per backend test.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_kpr_products.py",
+    "/app/test_reports/pytest/kpr_products_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "kpr_products_router.py: response uses `serialize_doc` after the doc was already inserted; the raw `doc` dict passed to serialize_doc still contains Mongo _id from the driver. The code correctly pops _id before returning, good. Verified no _id leak.",
+    "kpr_products_router.py POST/PUT return payload nested under {\"data\": ...}; list returns {\"data\": rows, \"total\": n}. Consistent shape \u2014 good.",
+    "Duplicate uniqueness is enforced at query time only (no unique index on (org_id, bank_name, name)). Under concurrent creates, a duplicate could slip through. Consider adding a MongoDB unique index."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_kpr_products.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "superadmin@sipro.co.id / Sipro#2026 (super_admin); sales@sipro.co.id / Sipro#2026 (sales) \u2014 from /app/memory/test_credentials.md",
+  "seed_data_creation": "Created ephemeral products under bank_name=TEST_BANK during pytest (auto-archived by fixture). One extra financing record created via inline verification (kept, minor demo pollution).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The KPR products CRUD + RBAC + financing/SP3K integration all verified. Contract SP3K stage UI flow (KprPanel with prefix 'kpr-sp3k-terms') was not exercised end-to-end because no seeded contract sits at the sp3k stage; the KprPanel page loaded elsewhere without runtime error and the backend endpoint accepts the two new fields. If retesting, seed a contract with kpr.applicable=true through the earlier stages and use P53.kprDialog testid to open the SP3K dialog.",
+  "rca of the issue": "N/A \u2014 no defects found."
+}
